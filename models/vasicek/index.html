@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vasicek Model — FI Model Zoo</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0d1117;color:#e6edf3;overflow-x:hidden}
+a{color:#f0883e;text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Header */
+.header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.header .back{font-size:14px;color:#8b949e;display:flex;align-items:center;gap:6px}
+.header .back:hover{color:#f0883e}
+.header .back svg{width:16px;height:16px;fill:currentColor}
+.header h1{font-size:24px;font-weight:600;color:#e6edf3;flex:1}
+.header .badge{background:#f0883e22;color:#f0883e;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #f0883e44}
+.header .year-badge{background:#30363d;color:#8b949e;padding:4px 10px;border-radius:12px;font-size:12px}
+
+/* Formula bar */
+.formula-bar{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;text-align:center}
+.formula-bar .formula{font-size:28px;font-family:'Cambria Math','Times New Roman',serif;color:#f0883e;letter-spacing:2px}
+.formula-bar .subtitle{color:#8b949e;font-size:13px;margin-top:6px}
+
+/* Layout */
+.main{display:grid;grid-template-columns:300px 1fr 320px;gap:0;min-height:calc(100vh - 130px)}
+
+/* Controls panel */
+.controls{background:#161b22;border-right:1px solid #30363d;padding:20px;overflow-y:auto}
+.controls h2{font-size:14px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.slider-group{margin-bottom:20px}
+.slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.slider-label span{font-size:14px;color:#e6edf3}
+.slider-label .val{font-family:'Cascadia Code','Fira Code',monospace;color:#f0883e;font-size:14px;font-weight:600;background:#f0883e15;padding:2px 8px;border-radius:4px}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:#30363d;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#f0883e;cursor:pointer;border:2px solid #0d1117}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#f0883e;cursor:pointer;border:2px solid #0d1117}
+.param-desc{font-size:11px;color:#484f58;margin-top:4px;line-height:1.4}
+.divider{height:1px;background:#30363d;margin:20px 0}
+
+/* Simulation controls */
+.sim-controls{display:flex;gap:8px;margin-bottom:16px}
+.btn{background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:all 0.15s}
+.btn:hover{background:#30363d;border-color:#484f58}
+.btn.primary{background:#f0883e;border-color:#f0883e;color:#0d1117;font-weight:600}
+.btn.primary:hover{background:#d2741f}
+
+/* Canvas area */
+.canvas-area{padding:20px;display:flex;flex-direction:column;gap:16px}
+.chart-container{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;flex:1;position:relative;min-height:400px}
+.chart-container canvas{width:100%;height:100%}
+.chart-title{position:absolute;top:12px;left:16px;font-size:13px;color:#8b949e;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;pointer-events:none;z-index:2}
+.chart-legend{position:absolute;top:12px;right:16px;display:flex;gap:12px;font-size:11px;color:#8b949e;pointer-events:none;z-index:2}
+.chart-legend .item{display:flex;align-items:center;gap:4px}
+.chart-legend .dot{width:8px;height:8px;border-radius:50%}
+
+/* Negative rate alert */
+.neg-alert{background:#f8514922;border:1px solid #f8514944;border-radius:6px;padding:10px 14px;font-size:12px;color:#f85149;display:none;align-items:center;gap:8px}
+.neg-alert.show{display:flex}
+.neg-alert svg{width:16px;height:16px;fill:#f85149;flex-shrink:0}
+
+/* Side panel */
+.side-panel{background:#161b22;border-left:1px solid #30363d;padding:20px;overflow-y:auto}
+.side-panel h2{font-size:14px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.metric-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:12px}
+.metric-card .label{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px}
+.metric-card .value{font-size:22px;font-weight:700;color:#f0883e;margin-top:4px;font-family:'Cascadia Code','Fira Code',monospace}
+.metric-card .unit{font-size:12px;color:#484f58;font-weight:400}
+.yield-chart{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:200px;position:relative;margin-bottom:12px}
+.yield-chart canvas{width:100%;height:100%}
+
+/* Educational notes */
+.edu-section{margin-top:16px}
+.edu-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:10px}
+.edu-card h3{font-size:13px;color:#f0883e;margin-bottom:6px;font-weight:600}
+.edu-card p{font-size:12px;color:#8b949e;line-height:1.6}
+.edu-card code{background:#161b22;color:#f0883e;padding:1px 5px;border-radius:3px;font-size:11px;font-family:'Cascadia Code','Fira Code',monospace}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-item{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px}
+.stat-item .s-label{font-size:10px;color:#484f58;text-transform:uppercase;letter-spacing:0.5px}
+.stat-item .s-val{font-size:16px;color:#e6edf3;font-weight:600;margin-top:2px;font-family:'Cascadia Code','Fira Code',monospace}
+
+@media(max-width:1100px){.main{grid-template-columns:1fr}.controls,.side-panel{border:none;border-bottom:1px solid #30363d}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="https://malphons.github.io/app_fi_zoo/#rate-dynamics" class="back">
+    <svg viewBox="0 0 16 16"><path d="M7.78 12.53a.75.75 0 01-1.06 0L2.47 8.28a.75.75 0 010-1.06l4.25-4.25a.75.75 0 011.06 1.06L4.81 7h7.44a.75.75 0 010 1.5H4.81l2.97 2.97a.75.75 0 010 1.06z"/></svg>
+    Back to Zoo
+  </a>
+  <h1>Vasicek Model</h1>
+  <span class="badge">Equilibrium</span>
+  <span class="year-badge">1977</span>
+</div>
+
+<div class="formula-bar">
+  <div class="formula">dr = a(b - r)dt + &sigma;dW</div>
+  <div class="subtitle">Ornstein-Uhlenbeck process for the short rate &mdash; Vasicek (1977)</div>
+</div>
+
+<div class="main">
+  <!-- Controls -->
+  <div class="controls">
+    <h2>Model Parameters</h2>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>a &mdash; Mean Reversion Speed</span><span class="val" id="v-a">0.50</span></div>
+      <input type="range" id="s-a" min="0.01" max="2" step="0.01" value="0.5">
+      <div class="param-desc">How quickly rates are pulled back toward the long-run mean. Higher = faster reversion.</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>b &mdash; Long-Run Mean</span><span class="val" id="v-b">5.00%</span></div>
+      <input type="range" id="s-b" min="0.5" max="12" step="0.1" value="5">
+      <div class="param-desc">The equilibrium interest rate level that r gravitates toward over time.</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>&sigma; &mdash; Volatility</span><span class="val" id="v-s">2.00%</span></div>
+      <input type="range" id="s-s" min="0.1" max="6" step="0.1" value="2">
+      <div class="param-desc">Instantaneous volatility of rate changes. Controls path dispersion.</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>r&#8320; &mdash; Initial Rate</span><span class="val" id="v-r0">3.00%</span></div>
+      <input type="range" id="s-r0" min="0" max="15" step="0.1" value="3">
+      <div class="param-desc">Starting short rate at time t=0.</div>
+    </div>
+
+    <div class="divider"></div>
+    <h2>Simulation</h2>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>Horizon (years)</span><span class="val" id="v-T">10</span></div>
+      <input type="range" id="s-T" min="1" max="30" step="1" value="10">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>Paths</span><span class="val" id="v-np">15</span></div>
+      <input type="range" id="s-np" min="5" max="30" step="1" value="15">
+    </div>
+
+    <div class="sim-controls">
+      <button class="btn primary" id="btn-resim">&#9654; Re-simulate</button>
+      <button class="btn" id="btn-seed">New Seed</button>
+    </div>
+
+    <div class="neg-alert" id="neg-alert">
+      <svg viewBox="0 0 16 16"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9-3a1 1 0 11-2 0 1 1 0 012 0zM8 6.5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 6.5z"/></svg>
+      <span id="neg-text">Warning: Vasicek allows negative rates! Some paths went below zero.</span>
+    </div>
+
+    <div class="divider"></div>
+    <h2>Key Properties</h2>
+    <div class="edu-card">
+      <h3>Mean Reversion</h3>
+      <p>When <code>r > b</code>, the drift is negative, pulling rates down. When <code>r &lt; b</code>, the drift is positive, pushing rates up. The parameter <code>a</code> controls the strength of this pull.</p>
+    </div>
+    <div class="edu-card">
+      <h3>Negative Rates Possible</h3>
+      <p>Unlike CIR, the Vasicek model uses constant volatility <code>&sigma;</code>, so Gaussian shocks can push rates below zero. This is a known limitation (and feature for some markets).</p>
+    </div>
+    <div class="edu-card">
+      <h3>Analytical Bond Pricing</h3>
+      <p>Zero-coupon bond prices have a closed-form solution: <code>P(t,T) = A(t,T)e^(-B(t,T)r(t))</code> making this model tractable for derivative pricing.</p>
+    </div>
+  </div>
+
+  <!-- Main canvas -->
+  <div class="canvas-area">
+    <div class="chart-container">
+      <div class="chart-title">Monte Carlo Rate Paths</div>
+      <div class="chart-legend">
+        <div class="item"><div class="dot" style="background:#f0883e"></div> Paths</div>
+        <div class="item"><div class="dot" style="background:#f0883e;opacity:0.3"></div> Mean</div>
+        <div class="item"><div class="dot" style="background:#3fb9504d"></div> 1&sigma; band</div>
+        <div class="item"><div class="dot" style="background:#3fb95022"></div> 2&sigma; band</div>
+        <div class="item"><div class="dot" style="background:#f85149"></div> Negative region</div>
+      </div>
+      <canvas id="pathCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="side-panel">
+    <h2>Analytics</h2>
+
+    <div class="metric-card">
+      <div class="label">Bond Price P(0, T)</div>
+      <div class="value" id="bondPrice">0.6703</div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="s-label">E[r(T)]</div>
+        <div class="s-val" id="expRate">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="s-label">Std[r(T)]</div>
+        <div class="s-val" id="stdRate">--</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="s-label">Half-life</div>
+        <div class="s-val" id="halfLife">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="s-label">Neg. paths</div>
+        <div class="s-val" id="negPaths">--</div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:16px">Implied Yield Curve</h2>
+    <div class="yield-chart">
+      <canvas id="yieldCanvas"></canvas>
+    </div>
+
+    <div class="edu-section">
+      <h2>Understanding the Output</h2>
+      <div class="edu-card">
+        <h3>Expected Rate</h3>
+        <p><code>E[r(t)] = b + (r0 - b)e^(-at)</code><br>The conditional mean reverts exponentially to <code>b</code>.</p>
+      </div>
+      <div class="edu-card">
+        <h3>Rate Variance</h3>
+        <p><code>Var[r(t)] = (sigma^2/2a)(1 - e^(-2at))</code><br>Variance increases initially and saturates at <code>sigma^2/(2a)</code>.</p>
+      </div>
+      <div class="edu-card">
+        <h3>Half-Life</h3>
+        <p><code>t_1/2 = ln(2)/a</code><br>Time for the expected deviation from <code>b</code> to halve. A measure of reversion strength.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // --- Parameter getters ---
+  const el = id => document.getElementById(id);
+  const params = () => ({
+    a: +el('s-a').value,
+    b: +el('s-b').value / 100,
+    sigma: +el('s-s').value / 100,
+    r0: +el('s-r0').value / 100,
+    T: +el('s-T').value,
+    nPaths: +el('s-np').value
+  });
+
+  // --- RNG with seed ---
+  let seed = 42;
+  function mulberry32(s){ return function(){ s|=0; s=s+0x6D2B79F5|0; let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t; return((t^t>>>14)>>>0)/4294967296; }; }
+  function gaussianPair(rng){
+    let u1=rng(), u2=rng();
+    while(u1===0) u1=rng();
+    const mag = Math.sqrt(-2*Math.log(u1));
+    return [mag*Math.cos(2*Math.PI*u2), mag*Math.sin(2*Math.PI*u2)];
+  }
+
+  // --- Simulation ---
+  function simulate(p){
+    const dt = p.T / 500;
+    const steps = 500;
+    const sqrtDt = Math.sqrt(dt);
+    const rng = mulberry32(seed);
+    const paths = [];
+    let negCount = 0;
+
+    for(let i=0; i<p.nPaths; i++){
+      const path = [p.r0];
+      let r = p.r0;
+      let wentNeg = false;
+      for(let j=0; j<steps; j++){
+        const [z] = gaussianPair(rng);
+        r = r + p.a*(p.b - r)*dt + p.sigma*sqrtDt*z;
+        path.push(r);
+        if(r < 0) wentNeg = true;
+      }
+      paths.push(path);
+      if(wentNeg) negCount++;
+    }
+    return { paths, steps, dt, negCount };
+  }
+
+  // --- Analytical functions ---
+  function vasicekB(a, tau){ return (1 - Math.exp(-a*tau)) / a; }
+  function vasicekA(a, b, sigma, tau){
+    const Bv = vasicekB(a, tau);
+    const sigma2 = sigma*sigma;
+    return Math.exp((Bv - tau)*(a*a*b - sigma2/2)/(a*a) - sigma2*Bv*Bv/(4*a));
+  }
+  function bondPrice(a, b, sigma, r0, T){
+    return vasicekA(a, b, sigma, T) * Math.exp(-vasicekB(a, T)*r0);
+  }
+  function yieldRate(a, b, sigma, r0, T){
+    if(T <= 0.001) return r0;
+    return -Math.log(bondPrice(a, b, sigma, r0, T)) / T;
+  }
+
+  // --- Drawing ---
+  function drawPaths(){
+    const p = params();
+    const { paths, steps, dt, negCount } = simulate(p);
+    const canvas = el('pathCanvas');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const W = rect.width, H = rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad = {top:40, right:20, bottom:40, left:60};
+    const cw = W-pad.left-pad.right, ch = H-pad.top-pad.bottom;
+
+    // Compute expected path and bands
+    const expPath = [], band1u=[], band1d=[], band2u=[], band2d=[];
+    for(let j=0; j<=steps; j++){
+      const t = j*dt;
+      const er = p.b + (p.r0 - p.b)*Math.exp(-p.a*t);
+      const vr = (p.sigma*p.sigma/(2*p.a))*(1 - Math.exp(-2*p.a*t));
+      const sd = Math.sqrt(vr);
+      expPath.push(er);
+      band1u.push(er+sd); band1d.push(er-sd);
+      band2u.push(er+2*sd); band2d.push(er-2*sd);
+    }
+
+    // Y range
+    let yMin=Infinity, yMax=-Infinity;
+    paths.forEach(path => path.forEach(v => { yMin=Math.min(yMin,v); yMax=Math.max(yMax,v); }));
+    band2u.forEach(v => yMax=Math.max(yMax,v));
+    band2d.forEach(v => yMin=Math.min(yMin,v));
+    const yPad = (yMax-yMin)*0.1 || 0.01;
+    yMin -= yPad; yMax += yPad;
+
+    const xScale = i => pad.left + (i/steps)*cw;
+    const yScale = v => pad.top + (1-(v-yMin)/(yMax-yMin))*ch;
+
+    // Grid
+    ctx.strokeStyle='#21262d'; ctx.lineWidth=1;
+    const nYTicks = 8;
+    for(let i=0; i<=nYTicks; i++){
+      const v = yMin + (yMax-yMin)*i/nYTicks;
+      const y = yScale(v);
+      ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
+      ctx.fillStyle='#484f58'; ctx.font='11px system-ui'; ctx.textAlign='right';
+      ctx.fillText((v*100).toFixed(2)+'%', pad.left-8, y+4);
+    }
+    const nXTicks = Math.min(p.T, 10);
+    for(let i=0; i<=nXTicks; i++){
+      const t = (i/nXTicks)*p.T;
+      const x = pad.left + (i/nXTicks)*cw;
+      ctx.beginPath(); ctx.moveTo(x,pad.top); ctx.lineTo(x,H-pad.bottom); ctx.stroke();
+      ctx.fillStyle='#484f58'; ctx.font='11px system-ui'; ctx.textAlign='center';
+      ctx.fillText(t.toFixed(0)+'y', x, H-pad.bottom+16);
+    }
+
+    // Negative rate zone
+    if(yMin < 0){
+      const y0 = yScale(0);
+      const yBot = yScale(yMin);
+      ctx.fillStyle='#f8514915';
+      ctx.fillRect(pad.left, y0, cw, yBot-y0);
+      ctx.strokeStyle='#f8514966'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(pad.left,y0); ctx.lineTo(W-pad.right,y0); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#f8514988'; ctx.font='11px system-ui'; ctx.textAlign='left';
+      ctx.fillText('Negative rates', pad.left+6, y0+14);
+    }
+
+    // 2-sigma band
+    ctx.fillStyle='#3fb95012';
+    ctx.beginPath();
+    for(let j=0;j<=steps;j++) ctx.lineTo(xScale(j),yScale(band2u[j]));
+    for(let j=steps;j>=0;j--) ctx.lineTo(xScale(j),yScale(band2d[j]));
+    ctx.closePath(); ctx.fill();
+
+    // 1-sigma band
+    ctx.fillStyle='#3fb95025';
+    ctx.beginPath();
+    for(let j=0;j<=steps;j++) ctx.lineTo(xScale(j),yScale(band1u[j]));
+    for(let j=steps;j>=0;j--) ctx.lineTo(xScale(j),yScale(band1d[j]));
+    ctx.closePath(); ctx.fill();
+
+    // Mean reversion level
+    ctx.strokeStyle='#f0883e55'; ctx.lineWidth=2; ctx.setLineDash([8,6]);
+    ctx.beginPath(); ctx.moveTo(pad.left,yScale(p.b)); ctx.lineTo(W-pad.right,yScale(p.b)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f0883e88'; ctx.font='bold 11px system-ui'; ctx.textAlign='right';
+    ctx.fillText('b = '+(p.b*100).toFixed(1)+'%', W-pad.right-4, yScale(p.b)-6);
+
+    // Expected path
+    ctx.strokeStyle='#f0883e66'; ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let j=0;j<=steps;j++){
+      j===0 ? ctx.moveTo(xScale(j),yScale(expPath[j])) : ctx.lineTo(xScale(j),yScale(expPath[j]));
+    }
+    ctx.stroke();
+
+    // Simulated paths
+    const colors = ['#58a6ff','#7ee787','#d2a8ff','#ff7b72','#79c0ff','#a5d6ff','#ffa657','#f778ba',
+                     '#b392f0','#56d364','#e3b341','#6cb6ff','#dbab79','#7ce38b','#a371f7','#f2cc60'];
+    paths.forEach((path, idx) => {
+      ctx.strokeStyle = colors[idx % colors.length] + '88';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for(let j=0; j<=steps; j++){
+        // Highlight negative segments in red
+        if(j > 0 && (path[j] < 0 || path[j-1] < 0)){
+          ctx.stroke();
+          ctx.strokeStyle = '#f85149cc';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(xScale(j-1), yScale(path[j-1]));
+          ctx.lineTo(xScale(j), yScale(path[j]));
+          ctx.stroke();
+          ctx.strokeStyle = colors[idx % colors.length] + '88';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(xScale(j), yScale(path[j]));
+        } else {
+          j===0 ? ctx.moveTo(xScale(j),yScale(path[j])) : ctx.lineTo(xScale(j),yScale(path[j]));
+        }
+      }
+      ctx.stroke();
+    });
+
+    // Update analytics
+    const eRT = p.b + (p.r0 - p.b)*Math.exp(-p.a*p.T);
+    const vrT = (p.sigma*p.sigma/(2*p.a))*(1-Math.exp(-2*p.a*p.T));
+    const sdRT = Math.sqrt(vrT);
+    const hl = Math.log(2)/p.a;
+    const bp = bondPrice(p.a, p.b, p.sigma, p.r0, p.T);
+
+    el('expRate').textContent = (eRT*100).toFixed(2)+'%';
+    el('stdRate').textContent = (sdRT*100).toFixed(2)+'%';
+    el('halfLife').textContent = hl.toFixed(2)+'y';
+    el('negPaths').textContent = negCount+'/'+p.nPaths;
+    el('bondPrice').textContent = bp.toFixed(6);
+
+    // Negative alert
+    if(negCount > 0){
+      el('neg-alert').classList.add('show');
+      el('neg-text').textContent = `Warning: ${negCount} of ${p.nPaths} paths went negative! Vasicek allows r < 0.`;
+    } else {
+      el('neg-alert').classList.remove('show');
+    }
+
+    // Draw yield curve
+    drawYieldCurve(p);
+  }
+
+  function drawYieldCurve(p){
+    const canvas = el('yieldCanvas');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width*dpr;
+    canvas.height = rect.height*dpr;
+    canvas.style.width = rect.width+'px';
+    canvas.style.height = rect.height+'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width, H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:16,right:12,bottom:28,left:44};
+    const cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom;
+
+    const maturities = [];
+    const yields = [];
+    for(let T=0.25; T<=30; T+=0.25){
+      maturities.push(T);
+      yields.push(yieldRate(p.a,p.b,p.sigma,p.r0,T));
+    }
+    let yMin=Math.min(...yields), yMax=Math.max(...yields);
+    const yPad2=(yMax-yMin)*0.15||0.005;
+    yMin-=yPad2; yMax+=yPad2;
+
+    // Grid
+    ctx.strokeStyle='#21262d'; ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const v=yMin+(yMax-yMin)*i/4;
+      const y=pad.top+(1-i/4)*ch;
+      ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='10px system-ui';ctx.textAlign='right';
+      ctx.fillText((v*100).toFixed(1)+'%',pad.left-4,y+3);
+    }
+    [1,5,10,20,30].forEach(t=>{
+      const x=pad.left+(t/30)*cw;
+      ctx.fillStyle='#484f58';ctx.font='10px system-ui';ctx.textAlign='center';
+      ctx.fillText(t+'y',x,H-pad.bottom+14);
+    });
+
+    // Yield curve
+    ctx.strokeStyle='#f0883e';ctx.lineWidth=2;
+    ctx.beginPath();
+    maturities.forEach((T,i)=>{
+      const x=pad.left+(T/30)*cw;
+      const y=pad.top+(1-(yields[i]-yMin)/(yMax-yMin))*ch;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // Fill under
+    ctx.lineTo(pad.left+cw, pad.top+ch);
+    ctx.lineTo(pad.left, pad.top+ch);
+    ctx.closePath();
+    ctx.fillStyle='#f0883e15';
+    ctx.fill();
+  }
+
+  // --- Event listeners ---
+  ['s-a','s-b','s-s','s-r0','s-T','s-np'].forEach(id => {
+    el(id).addEventListener('input', () => {
+      el('v-a').textContent = (+el('s-a').value).toFixed(2);
+      el('v-b').textContent = (+el('s-b').value).toFixed(2)+'%';
+      el('v-s').textContent = (+el('s-s').value).toFixed(2)+'%';
+      el('v-r0').textContent = (+el('s-r0').value).toFixed(2)+'%';
+      el('v-T').textContent = el('s-T').value;
+      el('v-np').textContent = el('s-np').value;
+      drawPaths();
+    });
+  });
+
+  el('btn-resim').addEventListener('click', drawPaths);
+  el('btn-seed').addEventListener('click', () => { seed = Math.floor(Math.random()*100000); drawPaths(); });
+
+  window.addEventListener('resize', drawPaths);
+  drawPaths();
+})();
+</script>
+</body>
+</html>

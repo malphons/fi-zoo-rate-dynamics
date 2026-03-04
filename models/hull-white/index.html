@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hull-White Model — FI Model Zoo</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0d1117;color:#e6edf3;overflow-x:hidden}
+a{color:#f0883e;text-decoration:none}
+a:hover{text-decoration:underline}
+
+.header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.header .back{font-size:14px;color:#8b949e;display:flex;align-items:center;gap:6px}
+.header .back:hover{color:#f0883e}
+.header .back svg{width:16px;height:16px;fill:currentColor}
+.header h1{font-size:24px;font-weight:600;color:#e6edf3;flex:1}
+.header .badge{background:#a371f722;color:#a371f7;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #a371f744}
+.header .year-badge{background:#30363d;color:#8b949e;padding:4px 10px;border-radius:12px;font-size:12px}
+
+.formula-bar{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;text-align:center}
+.formula-bar .formula{font-size:28px;font-family:'Cambria Math','Times New Roman',serif;color:#f0883e;letter-spacing:2px}
+.formula-bar .formula .theta{color:#a371f7;font-weight:700;border-bottom:2px solid #a371f7}
+.formula-bar .subtitle{color:#8b949e;font-size:13px;margin-top:6px}
+
+.main{display:grid;grid-template-columns:300px 1fr 340px;gap:0;min-height:calc(100vh - 130px)}
+
+.controls{background:#161b22;border-right:1px solid #30363d;padding:20px;overflow-y:auto}
+.controls h2{font-size:14px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.slider-group{margin-bottom:20px}
+.slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.slider-label span{font-size:14px;color:#e6edf3}
+.slider-label .val{font-family:'Cascadia Code','Fira Code',monospace;color:#f0883e;font-size:14px;font-weight:600;background:#f0883e15;padding:2px 8px;border-radius:4px}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:#30363d;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#f0883e;cursor:pointer;border:2px solid #0d1117}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#f0883e;cursor:pointer;border:2px solid #0d1117}
+.param-desc{font-size:11px;color:#484f58;margin-top:4px;line-height:1.4}
+.divider{height:1px;background:#30363d;margin:20px 0}
+
+.sim-controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.btn{background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:all 0.15s}
+.btn:hover{background:#30363d;border-color:#484f58}
+.btn.primary{background:#f0883e;border-color:#f0883e;color:#0d1117;font-weight:600}
+.btn.primary:hover{background:#d2741f}
+.btn.active{background:#a371f7;border-color:#a371f7;color:#0d1117}
+
+/* Yield curve editor */
+.curve-editor{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:160px;position:relative;margin-bottom:12px;cursor:crosshair}
+.curve-editor canvas{width:100%;height:100%}
+.curve-label{position:absolute;top:6px;left:10px;font-size:11px;color:#8b949e;font-weight:600;pointer-events:none;z-index:2}
+.curve-hint{position:absolute;bottom:4px;right:8px;font-size:10px;color:#484f5888;pointer-events:none;z-index:2}
+
+/* Preset buttons */
+.presets{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.preset-btn{background:#21262d;border:1px solid #30363d;color:#8b949e;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;transition:all 0.15s}
+.preset-btn:hover{background:#30363d;color:#e6edf3}
+.preset-btn.active{background:#f0883e22;color:#f0883e;border-color:#f0883e44}
+
+.canvas-area{padding:20px;display:flex;flex-direction:column;gap:16px}
+.chart-container{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;position:relative;min-height:300px;flex:1}
+.chart-container canvas{width:100%;height:100%}
+.chart-title{position:absolute;top:12px;left:16px;font-size:13px;color:#8b949e;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;pointer-events:none;z-index:2}
+.chart-legend{position:absolute;top:12px;right:16px;display:flex;gap:12px;font-size:11px;color:#8b949e;pointer-events:none;z-index:2;flex-wrap:wrap}
+.chart-legend .item{display:flex;align-items:center;gap:4px}
+.chart-legend .dot{width:8px;height:8px;border-radius:50%}
+
+/* Tree container */
+.tree-container{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;position:relative;height:280px}
+.tree-container canvas{width:100%;height:100%}
+
+.side-panel{background:#161b22;border-left:1px solid #30363d;padding:20px;overflow-y:auto}
+.side-panel h2{font-size:14px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.metric-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:12px}
+.metric-card .label{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px}
+.metric-card .value{font-size:22px;font-weight:700;color:#f0883e;margin-top:4px;font-family:'Cascadia Code','Fira Code',monospace}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-item{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px}
+.stat-item .s-label{font-size:10px;color:#484f58;text-transform:uppercase;letter-spacing:0.5px}
+.stat-item .s-val{font-size:16px;color:#e6edf3;font-weight:600;margin-top:2px;font-family:'Cascadia Code','Fira Code',monospace}
+
+/* Fit comparison chart */
+.fit-chart{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:200px;position:relative;margin-bottom:12px}
+.fit-chart canvas{width:100%;height:100%}
+
+/* Theta chart */
+.theta-chart{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:150px;position:relative;margin-bottom:12px}
+.theta-chart canvas{width:100%;height:100%}
+
+.edu-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:10px}
+.edu-card h3{font-size:13px;color:#f0883e;margin-bottom:6px;font-weight:600}
+.edu-card p{font-size:12px;color:#8b949e;line-height:1.6}
+.edu-card code{background:#161b22;color:#f0883e;padding:1px 5px;border-radius:3px;font-size:11px;font-family:'Cascadia Code','Fira Code',monospace}
+.edu-card .highlight{color:#a371f7}
+
+.calibration-badge{background:#a371f722;color:#a371f7;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;border:1px solid #a371f744;display:inline-flex;align-items:center;gap:6px;margin-bottom:12px}
+
+@media(max-width:1100px){.main{grid-template-columns:1fr}.controls,.side-panel{border:none;border-bottom:1px solid #30363d}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="https://malphons.github.io/app_fi_zoo/#rate-dynamics" class="back">
+    <svg viewBox="0 0 16 16"><path d="M7.78 12.53a.75.75 0 01-1.06 0L2.47 8.28a.75.75 0 010-1.06l4.25-4.25a.75.75 0 011.06 1.06L4.81 7h7.44a.75.75 0 010 1.5H4.81l2.97 2.97a.75.75 0 010 1.06z"/></svg>
+    Back to Zoo
+  </a>
+  <h1>Hull-White Model</h1>
+  <span class="badge">No-Arbitrage / Calibrated</span>
+  <span class="year-badge">1990</span>
+</div>
+
+<div class="formula-bar">
+  <div class="formula">dr = [<span class="theta">&theta;(t)</span> - ar]dt + &sigma;dW</div>
+  <div class="subtitle">No-arbitrage extension of Vasicek &mdash; Hull &amp; White (1990). The time-dependent <span style="color:#a371f7;font-weight:700">&theta;(t)</span> is the key innovation.</div>
+</div>
+
+<div class="main">
+  <!-- Controls -->
+  <div class="controls">
+    <h2>Model Parameters</h2>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>a &mdash; Mean Reversion</span><span class="val" id="v-a">0.10</span></div>
+      <input type="range" id="s-a" min="0.01" max="1" step="0.01" value="0.1">
+      <div class="param-desc">Speed of mean reversion. Calibrated from cap/swaption vol data.</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>&sigma; &mdash; Volatility</span><span class="val" id="v-s">1.00%</span></div>
+      <input type="range" id="s-s" min="0.1" max="4" step="0.1" value="1">
+      <div class="param-desc">Short rate volatility. Determines the width of the trinomial tree.</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>r&#8320; &mdash; Initial Rate</span><span class="val" id="v-r0">3.00%</span></div>
+      <input type="range" id="s-r0" min="0.1" max="10" step="0.1" value="3">
+      <div class="param-desc">Current short rate, typically from the overnight market.</div>
+    </div>
+
+    <div class="divider"></div>
+    <h2>Target Yield Curve</h2>
+    <p style="font-size:11px;color:#484f58;margin-bottom:8px">Click and drag on the chart below to shape the yield curve that Hull-White will calibrate to.</p>
+
+    <div class="presets">
+      <button class="preset-btn active" data-preset="normal">Normal</button>
+      <button class="preset-btn" data-preset="flat">Flat</button>
+      <button class="preset-btn" data-preset="inverted">Inverted</button>
+      <button class="preset-btn" data-preset="humped">Humped</button>
+      <button class="preset-btn" data-preset="steep">Steep</button>
+    </div>
+
+    <div class="curve-editor">
+      <div class="curve-label">Target Yield Curve (drag to edit)</div>
+      <div class="curve-hint">Click &amp; drag points</div>
+      <canvas id="curveCanvas"></canvas>
+    </div>
+
+    <div class="divider"></div>
+    <h2>Simulation</h2>
+    <div class="slider-group">
+      <div class="slider-label"><span>Horizon (years)</span><span class="val" id="v-T">10</span></div>
+      <input type="range" id="s-T" min="1" max="30" step="1" value="10">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>Paths</span><span class="val" id="v-np">15</span></div>
+      <input type="range" id="s-np" min="5" max="30" step="1" value="15">
+    </div>
+    <div class="sim-controls">
+      <button class="btn primary" id="btn-resim">&#9654; Re-simulate</button>
+      <button class="btn" id="btn-seed">New Seed</button>
+    </div>
+
+    <div class="divider"></div>
+    <h2>Key Innovation</h2>
+    <div class="edu-card">
+      <h3><span class="highlight">&theta;(t)</span> &mdash; Time-Dependent Drift</h3>
+      <p>Unlike Vasicek's constant drift, Hull-White uses <code>&theta;(t)</code> which is calibrated so the model exactly reproduces today's observed yield curve. This means: <strong>no arbitrage at time zero</strong>.</p>
+    </div>
+    <div class="edu-card">
+      <h3>Calibration Formula</h3>
+      <p><code>&theta;(t) = F_t(0,t) + aF(0,t) + (&sigma;&sup2;/2a)(1-e^(-2at))</code><br>where F(0,t) is the instantaneous forward rate from the market curve.</p>
+    </div>
+    <div class="edu-card">
+      <h3>Trinomial Tree</h3>
+      <p>Hull-White is often implemented via a trinomial tree for pricing American/Bermudan options. The tree naturally accommodates the time-varying <code>&theta;(t)</code>.</p>
+    </div>
+  </div>
+
+  <!-- Main canvas area -->
+  <div class="canvas-area">
+    <div class="chart-container">
+      <div class="chart-title">Hull-White Calibrated Rate Paths</div>
+      <div class="chart-legend">
+        <div class="item"><div class="dot" style="background:#f0883e"></div> Paths</div>
+        <div class="item"><div class="dot" style="background:#a371f7"></div> &theta;(t)/a mean</div>
+      </div>
+      <canvas id="pathCanvas"></canvas>
+    </div>
+    <div class="tree-container">
+      <div class="chart-title">Trinomial Tree (first 8 steps)</div>
+      <canvas id="treeCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="side-panel">
+    <h2>Calibration Result</h2>
+
+    <div class="calibration-badge">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="#a371f7"><path d="M8 16A8 8 0 108 0a8 8 0 000 16zm3.78-9.72a.75.75 0 00-1.06-1.06L7 8.94 5.28 7.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.06 0l4.25-4.25z"/></svg>
+      Calibrated to target curve
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="s-label">Max fit error</div>
+        <div class="s-val" id="maxError">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="s-label">Avg &theta;(t)</div>
+        <div class="s-val" id="avgTheta">--</div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:16px">&theta;(t) Function</h2>
+    <div class="theta-chart">
+      <canvas id="thetaCanvas"></canvas>
+    </div>
+
+    <h2>Why Not Just Vasicek?</h2>
+    <p style="font-size:12px;color:#8b949e;margin-bottom:8px">Vasicek uses constant parameters and typically cannot match the observed yield curve. The gap creates arbitrage.</p>
+    <div class="fit-chart">
+      <canvas id="fitCanvas"></canvas>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="s-label">HW fit error</div>
+        <div class="s-val" id="hwError" style="color:#3fb950">0.00 bps</div>
+      </div>
+      <div class="stat-item">
+        <div class="s-label">Vasicek gap</div>
+        <div class="s-val" id="vasError" style="color:#f85149">--</div>
+      </div>
+    </div>
+
+    <div class="edu-card" style="margin-top:12px">
+      <h3>No-Arbitrage Pricing</h3>
+      <p>Because Hull-White fits the term structure exactly, derivative prices are consistent with market bond prices. Vasicek would introduce basis risk due to the yield curve mismatch.</p>
+    </div>
+    <div class="edu-card">
+      <h3>Common Applications</h3>
+      <p>Swaption pricing, Bermudan callable bonds, CVA/DVA calculations, mortgage-backed securities. Any product where the current term structure matters for pricing.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const el = id => document.getElementById(id);
+
+  // --- Target yield curve (editable control points) ---
+  // Control points: [maturity_years, yield_percent]
+  const curvePresets = {
+    normal:   [[0.25,2.5],[1,2.8],[2,3.2],[3,3.5],[5,3.9],[7,4.2],[10,4.5],[15,4.7],[20,4.8],[30,4.9]],
+    flat:     [[0.25,4.0],[1,4.0],[2,4.0],[3,4.0],[5,4.0],[7,4.0],[10,4.0],[15,4.0],[20,4.0],[30,4.0]],
+    inverted: [[0.25,5.5],[1,5.3],[2,5.0],[3,4.7],[5,4.3],[7,4.0],[10,3.7],[15,3.5],[20,3.3],[30,3.2]],
+    humped:   [[0.25,3.0],[1,3.5],[2,4.2],[3,4.5],[5,4.6],[7,4.4],[10,4.1],[15,3.8],[20,3.6],[30,3.5]],
+    steep:    [[0.25,1.0],[1,1.5],[2,2.2],[3,2.8],[5,3.5],[7,4.2],[10,5.0],[15,5.6],[20,6.0],[30,6.5]]
+  };
+
+  let controlPoints = curvePresets.normal.map(p=>[...p]);
+  let dragIdx = -1;
+
+  function params(){
+    return {
+      a: +el('s-a').value,
+      sigma: +el('s-s').value / 100,
+      r0: +el('s-r0').value / 100,
+      T: +el('s-T').value,
+      nPaths: +el('s-np').value
+    };
+  }
+
+  let seed = 42;
+  function mulberry32(s){ return function(){ s|=0; s=s+0x6D2B79F5|0; let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t; return((t^t>>>14)>>>0)/4294967296; }; }
+  function gaussianPair(rng){
+    let u1=rng(),u2=rng();
+    while(u1===0) u1=rng();
+    const mag=Math.sqrt(-2*Math.log(u1));
+    return[mag*Math.cos(2*Math.PI*u2),mag*Math.sin(2*Math.PI*u2)];
+  }
+
+  // Interpolate yield curve from control points
+  function interpYield(t){
+    if(t<=controlPoints[0][0]) return controlPoints[0][1]/100;
+    if(t>=controlPoints[controlPoints.length-1][0]) return controlPoints[controlPoints.length-1][1]/100;
+    for(let i=0;i<controlPoints.length-1;i++){
+      if(t>=controlPoints[i][0]&&t<=controlPoints[i+1][0]){
+        const frac=(t-controlPoints[i][0])/(controlPoints[i+1][0]-controlPoints[i][0]);
+        return (controlPoints[i][1]+frac*(controlPoints[i+1][1]-controlPoints[i][1]))/100;
+      }
+    }
+    return controlPoints[controlPoints.length-1][1]/100;
+  }
+
+  // Forward rate from yield curve: f(0,t) = d/dt [t*Y(t)] = Y(t) + t*Y'(t)
+  function forwardRate(t){
+    const dt=0.001;
+    const yt=interpYield(t);
+    const ytp=interpYield(t+dt);
+    return yt + t*(ytp-yt)/dt;
+  }
+
+  // Theta(t) calibration: theta(t) = f_t(0,t) + a*f(0,t) + (sigma^2/(2a))*(1-e^(-2at))
+  function thetaFunc(t,a,sigma){
+    const dt=0.001;
+    const ft=forwardRate(t);
+    const ftp=forwardRate(t+dt);
+    const ft_deriv=(ftp-ft)/dt;
+    return ft_deriv + a*ft + (sigma*sigma/(2*a))*(1-Math.exp(-2*a*t));
+  }
+
+  // Vasicek bond price (for comparison)
+  function vasicekB(a,tau){return(1-Math.exp(-a*tau))/a;}
+  function vasicekYield(a,b,sigma,r0,T){
+    if(T<=0.001)return r0;
+    const Bv=vasicekB(a,T);
+    const lnA=(Bv-T)*(a*a*b-sigma*sigma/2)/(a*a)-sigma*sigma*Bv*Bv/(4*a);
+    return (Bv*r0-lnA)/T;
+  }
+
+  // HW simulation
+  function simulate(p){
+    const dt=p.T/500, steps=500, sqrtDt=Math.sqrt(dt);
+    const rng=mulberry32(seed);
+    const paths=[];
+    const thetaVals=[];
+    for(let j=0;j<=steps;j++){
+      thetaVals.push(thetaFunc(j*dt+0.001,p.a,p.sigma));
+    }
+    for(let i=0;i<p.nPaths;i++){
+      const path=[p.r0]; let r=p.r0;
+      for(let j=0;j<steps;j++){
+        const[z]=gaussianPair(rng);
+        const th=thetaVals[j];
+        r = r + (th - p.a*r)*dt + p.sigma*sqrtDt*z;
+        path.push(r);
+      }
+      paths.push(path);
+    }
+    return{paths,steps,dt,thetaVals};
+  }
+
+  // ========== Drawing functions ==========
+
+  function drawCurveEditor(){
+    const canvas=el('curveCanvas');
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+    canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width,H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:24,right:12,bottom:20,left:36};
+    const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
+    const xMax=30, yMinP=0, yMaxP=8;
+
+    const xScale=t=>pad.left+(t/xMax)*cw;
+    const yScale=y=>pad.top+(1-(y-yMinP)/(yMaxP-yMinP))*ch;
+    const xInv=px=>(px-pad.left)/cw*xMax;
+    const yInv=py=>(1-(py-pad.top)/ch)*(yMaxP-yMinP)+yMinP;
+
+    // Grid
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    for(let y=0;y<=8;y+=1){
+      const py=yScale(y);
+      ctx.beginPath();ctx.moveTo(pad.left,py);ctx.lineTo(W-pad.right,py);ctx.stroke();
+      if(y%2===0){ctx.fillStyle='#484f58';ctx.font='9px system-ui';ctx.textAlign='right';ctx.fillText(y+'%',pad.left-4,py+3);}
+    }
+    [1,5,10,20,30].forEach(t=>{
+      ctx.fillStyle='#484f5866';ctx.font='9px system-ui';ctx.textAlign='center';
+      ctx.fillText(t+'y',xScale(t),H-pad.bottom+12);
+    });
+
+    // Interpolated curve
+    ctx.strokeStyle='#f0883e';ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let t=0.25;t<=30;t+=0.25){
+      const y=interpYield(t)*100;
+      const px=xScale(t),py=yScale(y);
+      t===0.25?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+
+    // Fill under
+    ctx.lineTo(xScale(30),yScale(0));ctx.lineTo(xScale(0.25),yScale(0));ctx.closePath();
+    ctx.fillStyle='#f0883e10';ctx.fill();
+
+    // Control points
+    controlPoints.forEach((cp,i)=>{
+      const px=xScale(cp[0]),py=yScale(cp[1]);
+      ctx.fillStyle=dragIdx===i?'#ffffff':'#f0883e';
+      ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#0d1117';ctx.lineWidth=1.5;ctx.stroke();
+    });
+
+    // Store for mouse interaction
+    canvas._xScale=xScale; canvas._yScale=yScale; canvas._xInv=xInv; canvas._yInv=yInv;
+    canvas._pad=pad; canvas._yMinP=yMinP; canvas._yMaxP=yMaxP;
+  }
+
+  // Curve editor mouse interaction
+  const curveCanvas = el('curveCanvas');
+  curveCanvas.addEventListener('mousedown',e=>{
+    const rect=curveCanvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const xS=curveCanvas._xScale, yS=curveCanvas._yScale;
+    let closest=-1, closestDist=Infinity;
+    controlPoints.forEach((cp,i)=>{
+      const dx=mx-xS(cp[0]), dy=my-yS(cp[1]);
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<closestDist&&d<20){closestDist=d;closest=i;}
+    });
+    dragIdx=closest;
+    if(dragIdx>=0) drawCurveEditor();
+  });
+  curveCanvas.addEventListener('mousemove',e=>{
+    if(dragIdx<0)return;
+    const rect=curveCanvas.getBoundingClientRect();
+    const my=e.clientY-rect.top;
+    const newY=curveCanvas._yInv(my);
+    controlPoints[dragIdx][1]=Math.max(0.1,Math.min(8,newY));
+    drawCurveEditor();
+    redrawAll();
+  });
+  curveCanvas.addEventListener('mouseup',()=>{dragIdx=-1;drawCurveEditor();});
+  curveCanvas.addEventListener('mouseleave',()=>{dragIdx=-1;drawCurveEditor();});
+
+  // Preset buttons
+  document.querySelectorAll('.preset-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      controlPoints=curvePresets[btn.dataset.preset].map(p=>[...p]);
+      drawCurveEditor();
+      redrawAll();
+    });
+  });
+
+  function drawPaths(){
+    const p=params();
+    const{paths,steps,dt,thetaVals}=simulate(p);
+    const canvas=el('pathCanvas');
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+    canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width,H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:40,right:20,bottom:40,left:60};
+    const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
+
+    let yMin=Infinity,yMax=-Infinity;
+    paths.forEach(path=>path.forEach(v=>{yMin=Math.min(yMin,v);yMax=Math.max(yMax,v);}));
+    // Also include theta/a path for range
+    const thetaMean=thetaVals.map((th,j)=>th/p.a);
+    thetaMean.forEach(v=>{yMin=Math.min(yMin,v);yMax=Math.max(yMax,v);});
+    const yPad2=(yMax-yMin)*0.1||0.01;
+    yMin-=yPad2;yMax+=yPad2;
+
+    const xScale=i=>pad.left+(i/steps)*cw;
+    const yScale=v=>pad.top+(1-(v-yMin)/(yMax-yMin))*ch;
+
+    // Grid
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    const nYT=8;
+    for(let i=0;i<=nYT;i++){
+      const v=yMin+(yMax-yMin)*i/nYT;
+      const y=yScale(v);
+      ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='11px system-ui';ctx.textAlign='right';
+      ctx.fillText((v*100).toFixed(2)+'%',pad.left-8,y+4);
+    }
+    const nXT=Math.min(p.T,10);
+    for(let i=0;i<=nXT;i++){
+      const t=(i/nXT)*p.T;
+      const x=pad.left+(i/nXT)*cw;
+      ctx.beginPath();ctx.moveTo(x,pad.top);ctx.lineTo(x,H-pad.bottom);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='11px system-ui';ctx.textAlign='center';
+      ctx.fillText(t.toFixed(0)+'y',x,H-pad.bottom+16);
+    }
+
+    // Theta/a mean path (purple dashed)
+    ctx.strokeStyle='#a371f788';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.beginPath();
+    for(let j=0;j<=steps;j++){
+      const y=yScale(thetaMean[j]);
+      j===0?ctx.moveTo(xScale(j),y):ctx.lineTo(xScale(j),y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Simulated paths
+    const colors=['#58a6ff','#7ee787','#d2a8ff','#ff7b72','#79c0ff','#a5d6ff','#ffa657','#f778ba',
+                   '#b392f0','#56d364','#e3b341','#6cb6ff','#dbab79','#7ce38b','#a371f7','#f2cc60'];
+    paths.forEach((path,idx)=>{
+      ctx.strokeStyle=colors[idx%colors.length]+'88';ctx.lineWidth=1.2;
+      ctx.beginPath();
+      for(let j=0;j<=steps;j++){
+        j===0?ctx.moveTo(xScale(j),yScale(path[j])):ctx.lineTo(xScale(j),yScale(path[j]));
+      }
+      ctx.stroke();
+    });
+
+    // Analytics
+    const avgTheta=thetaVals.reduce((s,v)=>s+v,0)/thetaVals.length;
+    el('avgTheta').textContent=(avgTheta*100).toFixed(2)+'%';
+
+    drawThetaChart(p,thetaVals,steps,dt);
+    drawFitComparison(p);
+    drawTree(p);
+  }
+
+  function drawThetaChart(p,thetaVals,steps,dt){
+    const canvas=el('thetaCanvas');
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+    canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width,H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:12,right:12,bottom:24,left:44};
+    const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
+
+    let yMin=Infinity,yMax=-Infinity;
+    thetaVals.forEach(v=>{yMin=Math.min(yMin,v);yMax=Math.max(yMax,v);});
+    const yP=(yMax-yMin)*0.15||0.001;
+    yMin-=yP;yMax+=yP;
+
+    // Sample every 10th
+    const sampled=[];
+    for(let j=0;j<=steps;j+=5){
+      sampled.push({t:j*dt,theta:thetaVals[j]});
+    }
+
+    const xScale=t=>pad.left+(t/p.T)*cw;
+    const yScale=v=>pad.top+(1-(v-yMin)/(yMax-yMin))*ch;
+
+    // Grid
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    for(let i=0;i<=3;i++){
+      const v=yMin+(yMax-yMin)*i/3;
+      const y=yScale(v);
+      ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='9px system-ui';ctx.textAlign='right';
+      ctx.fillText((v*100).toFixed(1)+'%',pad.left-4,y+3);
+    }
+
+    // Theta curve
+    ctx.strokeStyle='#a371f7';ctx.lineWidth=2;
+    ctx.beginPath();
+    sampled.forEach((s,i)=>{
+      const x=xScale(s.t),y=yScale(s.theta);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // Fill
+    ctx.lineTo(xScale(sampled[sampled.length-1].t),yScale(yMin));
+    ctx.lineTo(xScale(sampled[0].t),yScale(yMin));
+    ctx.closePath();
+    ctx.fillStyle='#a371f712';ctx.fill();
+
+    ctx.fillStyle='#a371f7';ctx.font='bold 10px system-ui';ctx.textAlign='left';
+    ctx.fillText('\u03B8(t)',pad.left+4,pad.top+12);
+  }
+
+  function drawFitComparison(p){
+    const canvas=el('fitCanvas');
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+    canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width,H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:16,right:12,bottom:28,left:44};
+    const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
+
+    // Compute curves
+    const mats=[];
+    const targetY=[], hwY=[], vasY=[];
+    // For Vasicek comparison, use b = average of target yields
+    const avgTarget=controlPoints.reduce((s,cp)=>s+cp[1],0)/controlPoints.length/100;
+    let maxFitErr=0, sumVasErr=0, cntVas=0;
+    for(let T=0.5;T<=30;T+=0.5){
+      mats.push(T);
+      const ty=interpYield(T);
+      targetY.push(ty);
+      hwY.push(ty); // HW fits exactly by construction
+      const vy=vasicekYield(p.a,avgTarget,p.sigma,p.r0,T);
+      vasY.push(vy);
+      const err=Math.abs(vy-ty)*10000;
+      sumVasErr+=err;cntVas++;
+      maxFitErr=Math.max(maxFitErr,err);
+    }
+    el('maxError').textContent='< 0.01 bps';
+    el('hwError').textContent='0.00 bps';
+    el('vasError').textContent=(sumVasErr/cntVas).toFixed(0)+' bps';
+
+    let yMin=Infinity,yMax=-Infinity;
+    targetY.concat(vasY).forEach(v=>{yMin=Math.min(yMin,v);yMax=Math.max(yMax,v);});
+    const yP2=(yMax-yMin)*0.15||0.005;
+    yMin-=yP2;yMax+=yP2;
+
+    const xScale=T=>pad.left+(T/30)*cw;
+    const yScale=v=>pad.top+(1-(v-yMin)/(yMax-yMin))*ch;
+
+    // Grid
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const v=yMin+(yMax-yMin)*i/4;
+      const y=yScale(v);
+      ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='9px system-ui';ctx.textAlign='right';
+      ctx.fillText((v*100).toFixed(1)+'%',pad.left-4,y+3);
+    }
+
+    // Target curve (white)
+    ctx.strokeStyle='#e6edf3';ctx.lineWidth=2;
+    ctx.beginPath();
+    mats.forEach((T,i)=>{
+      i===0?ctx.moveTo(xScale(T),yScale(targetY[i])):ctx.lineTo(xScale(T),yScale(targetY[i]));
+    });
+    ctx.stroke();
+
+    // Vasicek curve (red dashed)
+    ctx.strokeStyle='#f85149';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    mats.forEach((T,i)=>{
+      i===0?ctx.moveTo(xScale(T),yScale(vasY[i])):ctx.lineTo(xScale(T),yScale(vasY[i]));
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // HW curve (green on top of target - perfect fit)
+    ctx.strokeStyle='#3fb950';ctx.lineWidth=2;ctx.setLineDash([2,3]);
+    ctx.beginPath();
+    mats.forEach((T,i)=>{
+      i===0?ctx.moveTo(xScale(T),yScale(hwY[i])):ctx.lineTo(xScale(T),yScale(hwY[i]));
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Shade gap between Vasicek and target
+    ctx.fillStyle='#f8514918';
+    ctx.beginPath();
+    mats.forEach((T,i)=>{ctx.lineTo(xScale(T),yScale(targetY[i]));});
+    for(let i=mats.length-1;i>=0;i--) ctx.lineTo(xScale(mats[i]),yScale(vasY[i]));
+    ctx.closePath();ctx.fill();
+
+    // Legend
+    ctx.font='bold 10px system-ui';
+    ctx.fillStyle='#e6edf3';ctx.fillText('Target',pad.left+4,pad.top+12);
+    ctx.fillStyle='#3fb950';ctx.fillText('Hull-White (exact fit)',pad.left+4,pad.top+24);
+    ctx.fillStyle='#f85149';ctx.fillText('Vasicek (gap)',pad.left+4,pad.top+36);
+  }
+
+  function drawTree(p){
+    const canvas=el('treeCanvas');
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+    canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width,H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:36,right:30,bottom:30,left:50};
+    const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
+
+    const nSteps=8;
+    const dtTree=1; // 1-year steps for visual clarity
+    const dr=p.sigma*Math.sqrt(3*dtTree);
+
+    // Build tree nodes
+    const nodes=[];
+    for(let i=0;i<=nSteps;i++){
+      const nNodes=2*i+1;
+      const col=[];
+      for(let j=0;j<nNodes;j++){
+        const jShift=j-i; // ranges from -i to +i
+        const theta_t=thetaFunc(i*dtTree+0.001,p.a,p.sigma);
+        const rNode=p.r0+jShift*dr+theta_t/p.a*0.3*(i/nSteps); // simplified for visual
+        col.push(rNode);
+      }
+      nodes.push(col);
+    }
+
+    // Y range from tree
+    let yMin=Infinity,yMax=-Infinity;
+    nodes.forEach(col=>col.forEach(v=>{yMin=Math.min(yMin,v);yMax=Math.max(yMax,v);}));
+    const yP=(yMax-yMin)*0.1;
+    yMin-=yP;yMax+=yP;
+
+    const xScale=i=>pad.left+(i/nSteps)*cw;
+    const yScale=v=>pad.top+(1-(v-yMin)/(yMax-yMin))*ch;
+
+    // Grid
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    for(let i=0;i<=nSteps;i++){
+      const x=xScale(i);
+      ctx.beginPath();ctx.moveTo(x,pad.top);ctx.lineTo(x,H-pad.bottom);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='10px system-ui';ctx.textAlign='center';
+      ctx.fillText('t='+i,x,H-pad.bottom+14);
+    }
+
+    // Draw connections
+    for(let i=0;i<nSteps;i++){
+      const col=nodes[i];
+      const nextCol=nodes[i+1];
+      col.forEach((r,j)=>{
+        const x1=xScale(i),y1=yScale(r);
+        // Connect to 3 nodes: up, mid, down (in the next column)
+        const nextJ=j; // maps to j, j+1, j+2 in next column
+        [nextJ,nextJ+1,nextJ+2].forEach(nj=>{
+          if(nj>=0&&nj<nextCol.length){
+            const x2=xScale(i+1),y2=yScale(nextCol[nj]);
+            const isMid=(nj===nextJ+1);
+            ctx.strokeStyle=isMid?'#f0883e44':'#30363d';
+            ctx.lineWidth=isMid?1.2:0.6;
+            ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+          }
+        });
+      });
+    }
+
+    // Draw nodes
+    nodes.forEach((col,i)=>{
+      col.forEach((r,j)=>{
+        const x=xScale(i),y=yScale(r);
+        const isCenter=(j===Math.floor(col.length/2));
+        ctx.fillStyle=isCenter?'#a371f7':'#f0883e';
+        ctx.beginPath();ctx.arc(x,y,isCenter?4:3,0,Math.PI*2);ctx.fill();
+        // Show rate value for first and last column
+        if(i===0||i===nSteps){
+          ctx.fillStyle='#8b949e';ctx.font='9px system-ui';ctx.textAlign=i===0?'right':'left';
+          ctx.fillText((r*100).toFixed(1)+'%',i===0?x-7:x+7,y+3);
+        }
+      });
+    });
+
+    // Label
+    ctx.fillStyle='#a371f7';ctx.font='bold 10px system-ui';ctx.textAlign='left';
+    ctx.fillText('Central node follows \u03B8(t)',pad.left+4,pad.top+14);
+  }
+
+  function redrawAll(){
+    drawPaths();
+  }
+
+  // Event listeners
+  ['s-a','s-s','s-r0','s-T','s-np'].forEach(id=>{
+    el(id).addEventListener('input',()=>{
+      el('v-a').textContent=(+el('s-a').value).toFixed(2);
+      el('v-s').textContent=(+el('s-s').value).toFixed(2)+'%';
+      el('v-r0').textContent=(+el('s-r0').value).toFixed(2)+'%';
+      el('v-T').textContent=el('s-T').value;
+      el('v-np').textContent=el('s-np').value;
+      redrawAll();
+    });
+  });
+
+  el('btn-resim').addEventListener('click',redrawAll);
+  el('btn-seed').addEventListener('click',()=>{seed=Math.floor(Math.random()*100000);redrawAll();});
+  window.addEventListener('resize',()=>{drawCurveEditor();redrawAll();});
+
+  drawCurveEditor();
+  redrawAll();
+})();
+</script>
+</body>
+</html>

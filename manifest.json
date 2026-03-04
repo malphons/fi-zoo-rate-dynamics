@@ -1,0 +1,57 @@
+{
+  "spoke_id": "rate-dynamics",
+  "label": "Interest Rate Dynamics",
+  "models": [
+    {
+      "id": "vasicek",
+      "name": "Vasicek Model",
+      "short_description": "A pioneering mean-reverting short rate model with an analytical bond pricing formula.",
+      "family": "rate-dynamics",
+      "subcategory": "equilibrium",
+      "tags": ["mean-reversion", "ornstein-uhlenbeck", "affine", "analytical", "short-rate"],
+      "year_introduced": 1977,
+      "key_paper": "Vasicek (1977)",
+      "complexity": "intermediate",
+      "color_accent": "#f0883e",
+      "use_cases": ["bond pricing", "rate scenario generation", "risk management"],
+      "formula": "dr = a(b - r)dt + σdW",
+      "products": ["government bonds", "interest rate derivatives"],
+      "related_models": ["cir", "hull-white"],
+      "key_insight": "Mean reversion keeps rates bounded around equilibrium."
+    },
+    {
+      "id": "cir",
+      "name": "Cox-Ingersoll-Ross Model",
+      "short_description": "Extends Vasicek with square-root diffusion ensuring positive rates.",
+      "family": "rate-dynamics",
+      "subcategory": "equilibrium",
+      "tags": ["mean-reversion", "square-root", "positive-rates", "affine", "feller-condition"],
+      "year_introduced": 1985,
+      "key_paper": "Cox, Ingersoll & Ross (1985)",
+      "complexity": "intermediate",
+      "color_accent": "#f0883e",
+      "use_cases": ["bond pricing", "credit intensity modeling", "rate simulation"],
+      "formula": "dr = a(b - r)dt + σ√r dW",
+      "products": ["government bonds", "credit default swaps"],
+      "related_models": ["vasicek", "hull-white"],
+      "key_insight": "The sqrt(r) volatility term naturally prevents negative rates."
+    },
+    {
+      "id": "hull-white",
+      "name": "Hull-White Model",
+      "short_description": "No-arbitrage extension of Vasicek that perfectly fits the current term structure.",
+      "family": "rate-dynamics",
+      "subcategory": "calibrated",
+      "tags": ["no-arbitrage", "time-varying", "calibration", "trinomial-tree"],
+      "year_introduced": 1990,
+      "key_paper": "Hull & White (1990)",
+      "complexity": "advanced",
+      "color_accent": "#f0883e",
+      "use_cases": ["swaption pricing", "Bermudan option valuation", "CVA calculation"],
+      "formula": "dr = [θ(t) - ar]dt + σdW",
+      "products": ["swaptions", "callable bonds", "Bermudan options"],
+      "related_models": ["vasicek", "cir", "hjm"],
+      "key_insight": "Time-dependent θ(t) calibrates exactly to the observed yield curve."
+    }
+  ]
+}

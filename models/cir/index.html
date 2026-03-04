@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cox-Ingersoll-Ross Model — FI Model Zoo</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0d1117;color:#e6edf3;overflow-x:hidden}
+a{color:#f0883e;text-decoration:none}
+a:hover{text-decoration:underline}
+
+.header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.header .back{font-size:14px;color:#8b949e;display:flex;align-items:center;gap:6px}
+.header .back:hover{color:#f0883e}
+.header .back svg{width:16px;height:16px;fill:currentColor}
+.header h1{font-size:24px;font-weight:600;color:#e6edf3;flex:1}
+.header .badge{background:#f0883e22;color:#f0883e;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #f0883e44}
+.header .year-badge{background:#30363d;color:#8b949e;padding:4px 10px;border-radius:12px;font-size:12px}
+
+.formula-bar{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;text-align:center}
+.formula-bar .formula{font-size:28px;font-family:'Cambria Math','Times New Roman',serif;color:#f0883e;letter-spacing:2px}
+.formula-bar .subtitle{color:#8b949e;font-size:13px;margin-top:6px}
+
+.main{display:grid;grid-template-columns:300px 1fr 340px;gap:0;min-height:calc(100vh - 130px)}
+
+.controls{background:#161b22;border-right:1px solid #30363d;padding:20px;overflow-y:auto}
+.controls h2{font-size:14px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.slider-group{margin-bottom:20px}
+.slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.slider-label span{font-size:14px;color:#e6edf3}
+.slider-label .val{font-family:'Cascadia Code','Fira Code',monospace;color:#f0883e;font-size:14px;font-weight:600;background:#f0883e15;padding:2px 8px;border-radius:4px}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:#30363d;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#f0883e;cursor:pointer;border:2px solid #0d1117}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#f0883e;cursor:pointer;border:2px solid #0d1117}
+.param-desc{font-size:11px;color:#484f58;margin-top:4px;line-height:1.4}
+.divider{height:1px;background:#30363d;margin:20px 0}
+
+.sim-controls{display:flex;gap:8px;margin-bottom:16px}
+.btn{background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;transition:all 0.15s}
+.btn:hover{background:#30363d;border-color:#484f58}
+.btn.primary{background:#f0883e;border-color:#f0883e;color:#0d1117;font-weight:600}
+.btn.primary:hover{background:#d2741f}
+
+/* Feller condition indicator */
+.feller-box{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:16px}
+.feller-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.feller-light{width:16px;height:16px;border-radius:50%;border:2px solid #30363d;transition:all 0.3s}
+.feller-light.green{background:#3fb950;border-color:#3fb950;box-shadow:0 0 8px #3fb95066}
+.feller-light.red{background:#f85149;border-color:#f85149;box-shadow:0 0 8px #f8514966}
+.feller-light.yellow{background:#d29922;border-color:#d29922;box-shadow:0 0 8px #d2992266}
+.feller-title{font-size:13px;font-weight:600;color:#e6edf3}
+.feller-eq{font-family:'Cascadia Code','Fira Code',monospace;font-size:12px;color:#8b949e;margin-top:4px}
+.feller-eq .hl{color:#f0883e;font-weight:700}
+.feller-status{font-size:12px;margin-top:6px;font-weight:600}
+.feller-status.pass{color:#3fb950}
+.feller-status.fail{color:#f85149}
+.feller-status.warn{color:#d29922}
+
+.canvas-area{padding:20px;display:flex;flex-direction:column;gap:16px}
+.chart-container{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;flex:1;position:relative;min-height:350px}
+.chart-container canvas{width:100%;height:100%}
+.chart-title{position:absolute;top:12px;left:16px;font-size:13px;color:#8b949e;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;pointer-events:none;z-index:2}
+.chart-legend{position:absolute;top:12px;right:16px;display:flex;gap:12px;font-size:11px;color:#8b949e;pointer-events:none;z-index:2;flex-wrap:wrap}
+.chart-legend .item{display:flex;align-items:center;gap:4px}
+.chart-legend .dot{width:8px;height:8px;border-radius:50%}
+
+/* Vol chart */
+.vol-chart-container{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:180px;position:relative}
+.vol-chart-container canvas{width:100%;height:100%}
+
+.side-panel{background:#161b22;border-left:1px solid #30363d;padding:20px;overflow-y:auto}
+.side-panel h2{font-size:14px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.metric-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:12px}
+.metric-card .label{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px}
+.metric-card .value{font-size:22px;font-weight:700;color:#f0883e;margin-top:4px;font-family:'Cascadia Code','Fira Code',monospace}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-item{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px}
+.stat-item .s-label{font-size:10px;color:#484f58;text-transform:uppercase;letter-spacing:0.5px}
+.stat-item .s-val{font-size:16px;color:#e6edf3;font-weight:600;margin-top:2px;font-family:'Cascadia Code','Fira Code',monospace}
+
+/* Comparison panel */
+.compare-section{margin-top:16px}
+.compare-chart{background:#0d1117;border:1px solid #30363d;border-radius:8px;overflow:hidden;height:200px;position:relative;margin-bottom:12px}
+.compare-chart canvas{width:100%;height:100%}
+
+.edu-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:10px}
+.edu-card h3{font-size:13px;color:#f0883e;margin-bottom:6px;font-weight:600}
+.edu-card p{font-size:12px;color:#8b949e;line-height:1.6}
+.edu-card code{background:#161b22;color:#f0883e;padding:1px 5px;border-radius:3px;font-size:11px;font-family:'Cascadia Code','Fira Code',monospace}
+
+.positive-badge{background:#3fb95022;color:#3fb950;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;border:1px solid #3fb95044;display:inline-flex;align-items:center;gap:6px;margin-bottom:12px}
+.positive-badge svg{width:14px;height:14px;fill:#3fb950}
+
+@media(max-width:1100px){.main{grid-template-columns:1fr}.controls,.side-panel{border:none;border-bottom:1px solid #30363d}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="https://malphons.github.io/app_fi_zoo/#rate-dynamics" class="back">
+    <svg viewBox="0 0 16 16"><path d="M7.78 12.53a.75.75 0 01-1.06 0L2.47 8.28a.75.75 0 010-1.06l4.25-4.25a.75.75 0 011.06 1.06L4.81 7h7.44a.75.75 0 010 1.5H4.81l2.97 2.97a.75.75 0 010 1.06z"/></svg>
+    Back to Zoo
+  </a>
+  <h1>Cox-Ingersoll-Ross Model</h1>
+  <span class="badge">Equilibrium</span>
+  <span class="year-badge">1985</span>
+</div>
+
+<div class="formula-bar">
+  <div class="formula">dr = a(b - r)dt + &sigma;&radic;r dW</div>
+  <div class="subtitle">Square-root diffusion process &mdash; Cox, Ingersoll &amp; Ross (1985)</div>
+</div>
+
+<div class="main">
+  <!-- Controls -->
+  <div class="controls">
+    <h2>Model Parameters</h2>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>a &mdash; Mean Reversion</span><span class="val" id="v-a">0.50</span></div>
+      <input type="range" id="s-a" min="0.01" max="3" step="0.01" value="0.5">
+      <div class="param-desc">Speed at which rates revert to the long-run mean b.</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>b &mdash; Long-Run Mean</span><span class="val" id="v-b">5.00%</span></div>
+      <input type="range" id="s-b" min="0.5" max="12" step="0.1" value="5">
+      <div class="param-desc">Equilibrium rate level.</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>&sigma; &mdash; Volatility</span><span class="val" id="v-s">5.00%</span></div>
+      <input type="range" id="s-s" min="0.5" max="30" step="0.5" value="5">
+      <div class="param-desc">Volatility coefficient. Note: effective vol is &sigma;&radic;r, so it scales with rate level.</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>r&#8320; &mdash; Initial Rate</span><span class="val" id="v-r0">4.00%</span></div>
+      <input type="range" id="s-r0" min="0.1" max="15" step="0.1" value="4">
+      <div class="param-desc">Starting short rate.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Feller condition -->
+    <div class="feller-box" id="feller-box">
+      <div class="feller-header">
+        <div class="feller-light green" id="feller-light"></div>
+        <div class="feller-title">Feller Condition</div>
+      </div>
+      <div class="feller-eq">2ab = <span class="hl" id="f-2ab">0.050</span> &nbsp; vs &nbsp; &sigma;&sup2; = <span class="hl" id="f-s2">0.003</span></div>
+      <div class="feller-status pass" id="feller-status">SATISFIED &mdash; r(t) > 0 guaranteed</div>
+    </div>
+
+    <div class="divider"></div>
+    <h2>Simulation</h2>
+
+    <div class="slider-group">
+      <div class="slider-label"><span>Horizon (years)</span><span class="val" id="v-T">10</span></div>
+      <input type="range" id="s-T" min="1" max="30" step="1" value="10">
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>Paths</span><span class="val" id="v-np">15</span></div>
+      <input type="range" id="s-np" min="5" max="30" step="1" value="15">
+    </div>
+
+    <div class="sim-controls">
+      <button class="btn primary" id="btn-resim">&#9654; Re-simulate</button>
+      <button class="btn" id="btn-seed">New Seed</button>
+    </div>
+
+    <div class="divider"></div>
+    <h2>Key Properties</h2>
+    <div class="edu-card">
+      <h3>Positive Rates Guaranteed</h3>
+      <p>The <code>&sigma;&radic;r</code> diffusion term shrinks to zero as <code>r &rarr; 0</code>, preventing the rate from crossing zero. This is the key advantage over Vasicek.</p>
+    </div>
+    <div class="edu-card">
+      <h3>Feller Condition</h3>
+      <p>When <code>2ab &ge; &sigma;&sup2;</code>, the drift dominates near zero, ensuring <code>r(t) > 0</code> strictly. When violated, r can touch zero but reflects immediately.</p>
+    </div>
+    <div class="edu-card">
+      <h3>Heteroskedastic Volatility</h3>
+      <p>Effective volatility = <code>&sigma;&radic;r</code>. Higher rates produce wider path dispersion. This matches empirical observations in many markets.</p>
+    </div>
+  </div>
+
+  <!-- Main canvas -->
+  <div class="canvas-area">
+    <div class="chart-container">
+      <div class="chart-title">Monte Carlo Rate Paths (CIR)</div>
+      <div class="chart-legend">
+        <div class="item"><div class="dot" style="background:#f0883e"></div> Paths</div>
+        <div class="item"><div class="dot" style="background:#3fb950"></div> Zero floor</div>
+        <div class="item"><div class="dot" style="background:#f0883e55"></div> Mean level</div>
+      </div>
+      <canvas id="pathCanvas"></canvas>
+    </div>
+    <div class="vol-chart-container">
+      <div class="chart-title">Effective Volatility: &sigma;&radic;r vs Rate Level</div>
+      <canvas id="volCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="side-panel">
+    <h2>Analytics</h2>
+
+    <div class="positive-badge">
+      <svg viewBox="0 0 16 16"><path d="M8 16A8 8 0 108 0a8 8 0 000 16zm3.78-9.72a.75.75 0 00-1.06-1.06L7 8.94 5.28 7.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.06 0l4.25-4.25z"/></svg>
+      All rates remain non-negative
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="s-label">E[r(T)]</div>
+        <div class="s-val" id="expRate">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="s-label">Std[r(T)]</div>
+        <div class="s-val" id="stdRate">--</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="s-label">Min path value</div>
+        <div class="s-val" id="minVal">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="s-label">Max path value</div>
+        <div class="s-val" id="maxVal">--</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="s-label">Half-life</div>
+        <div class="s-val" id="halfLife">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="s-label">Long-run std</div>
+        <div class="s-val" id="lrStd">--</div>
+      </div>
+    </div>
+
+    <div class="compare-section">
+      <h2>CIR vs Vasicek Comparison</h2>
+      <p style="font-size:12px;color:#8b949e;margin-bottom:8px">Same parameters applied to both models. Notice how Vasicek paths can go negative while CIR stays positive.</p>
+      <div class="compare-chart">
+        <canvas id="compareCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="edu-card" style="margin-top:12px">
+      <h3>When Feller is Violated</h3>
+      <p>If <code>2ab &lt; &sigma;&sup2;</code>, the rate can reach zero. At zero, the drift <code>ab &gt; 0</code> pushes it back up immediately. The process "reflects" off the boundary &mdash; it touches but never crosses zero.</p>
+    </div>
+    <div class="edu-card">
+      <h3>CIR Bond Pricing</h3>
+      <p>Like Vasicek, CIR has closed-form bond prices: <code>P(t,T) = A(t,T)e^(-B(t,T)r)</code> but with different A and B functions involving <code>&gamma; = &radic;(a&sup2; + 2&sigma;&sup2;)</code>.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const el = id => document.getElementById(id);
+  const params = () => ({
+    a: +el('s-a').value,
+    b: +el('s-b').value / 100,
+    sigma: +el('s-s').value / 100,
+    r0: +el('s-r0').value / 100,
+    T: +el('s-T').value,
+    nPaths: +el('s-np').value
+  });
+
+  let seed = 42;
+  function mulberry32(s){ return function(){ s|=0; s=s+0x6D2B79F5|0; let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t; return((t^t>>>14)>>>0)/4294967296; }; }
+  function gaussianPair(rng){
+    let u1=rng(), u2=rng();
+    while(u1===0) u1=rng();
+    const mag=Math.sqrt(-2*Math.log(u1));
+    return[mag*Math.cos(2*Math.PI*u2), mag*Math.sin(2*Math.PI*u2)];
+  }
+
+  function simulateCIR(p){
+    const dt=p.T/500, steps=500, sqrtDt=Math.sqrt(dt);
+    const rng=mulberry32(seed);
+    const paths=[];
+    let globalMin=Infinity, globalMax=-Infinity;
+    for(let i=0;i<p.nPaths;i++){
+      const path=[p.r0]; let r=p.r0;
+      for(let j=0;j<steps;j++){
+        const[z]=gaussianPair(rng);
+        // Milstein scheme for CIR
+        const rPos = Math.max(r, 0);
+        const sqrtR = Math.sqrt(rPos);
+        r = r + p.a*(p.b - rPos)*dt + p.sigma*sqrtR*sqrtDt*z + 0.25*p.sigma*p.sigma*dt*(z*z - 1);
+        r = Math.max(r, 0); // Reflection at zero
+        path.push(r);
+        globalMin=Math.min(globalMin,r);
+        globalMax=Math.max(globalMax,r);
+      }
+      paths.push(path);
+    }
+    return{paths,steps,dt,globalMin,globalMax};
+  }
+
+  function simulateVasicek(p){
+    const dt=p.T/500, steps=500, sqrtDt=Math.sqrt(dt);
+    const rng=mulberry32(seed+9999);
+    const paths=[];
+    for(let i=0;i<Math.min(p.nPaths,5);i++){
+      const path=[p.r0]; let r=p.r0;
+      for(let j=0;j<steps;j++){
+        const[z]=gaussianPair(rng);
+        r = r + p.a*(p.b - r)*dt + p.sigma*Math.sqrt(p.r0)*sqrtDt*z; // scale vol to make fair comparison
+        path.push(r);
+      }
+      paths.push(path);
+    }
+    return{paths,steps,dt};
+  }
+
+  function updateFeller(p){
+    const twoAB = 2*p.a*p.b;
+    const s2 = p.sigma*p.sigma;
+    el('f-2ab').textContent = twoAB.toFixed(4);
+    el('f-s2').textContent = s2.toFixed(4);
+    const light = el('feller-light');
+    const status = el('feller-status');
+    if(twoAB > s2 * 1.5){
+      light.className='feller-light green';
+      status.className='feller-status pass';
+      status.textContent='SATISFIED \u2014 r(t) > 0 guaranteed';
+    } else if(twoAB >= s2){
+      light.className='feller-light yellow';
+      status.className='feller-status warn';
+      status.textContent='MARGINAL \u2014 barely satisfied, r may touch near zero';
+    } else {
+      light.className='feller-light red';
+      status.className='feller-status fail';
+      status.textContent='VIOLATED \u2014 r can reach zero (reflects back)';
+    }
+  }
+
+  function drawPaths(){
+    const p = params();
+    updateFeller(p);
+    const{paths,steps,dt,globalMin,globalMax}=simulateCIR(p);
+    const canvas=el('pathCanvas');
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=rect.width*dpr; canvas.height=rect.height*dpr;
+    canvas.style.width=rect.width+'px'; canvas.style.height=rect.height+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width,H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:40,right:20,bottom:40,left:60};
+    const cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom;
+
+    // Expected path
+    const expPath=[];
+    for(let j=0;j<=steps;j++){
+      const t=j*dt;
+      expPath.push(p.b+(p.r0-p.b)*Math.exp(-p.a*t));
+    }
+
+    let yMin=0, yMax=globalMax;
+    expPath.forEach(v=>{yMax=Math.max(yMax,v)});
+    const yPad=(yMax-yMin)*0.1||0.01;
+    yMax+=yPad;
+
+    const xScale=i=>pad.left+(i/steps)*cw;
+    const yScale=v=>pad.top+(1-(v-yMin)/(yMax-yMin))*ch;
+
+    // Grid
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    const nYTicks=8;
+    for(let i=0;i<=nYTicks;i++){
+      const v=yMin+(yMax-yMin)*i/nYTicks;
+      const y=yScale(v);
+      ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='11px system-ui';ctx.textAlign='right';
+      ctx.fillText((v*100).toFixed(2)+'%',pad.left-8,y+4);
+    }
+    const nXTicks=Math.min(p.T,10);
+    for(let i=0;i<=nXTicks;i++){
+      const t=(i/nXTicks)*p.T;
+      const x=pad.left+(i/nXTicks)*cw;
+      ctx.beginPath();ctx.moveTo(x,pad.top);ctx.lineTo(x,H-pad.bottom);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='11px system-ui';ctx.textAlign='center';
+      ctx.fillText(t.toFixed(0)+'y',x,H-pad.bottom+16);
+    }
+
+    // Zero floor - green line
+    const y0=yScale(0);
+    ctx.strokeStyle='#3fb95066';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(pad.left,y0);ctx.lineTo(W-pad.right,y0);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#3fb95088';ctx.font='bold 11px system-ui';ctx.textAlign='left';
+    ctx.fillText('Zero floor',pad.left+6,y0-6);
+
+    // Green glow at zero
+    const grad=ctx.createLinearGradient(0,y0-10,0,y0+10);
+    grad.addColorStop(0,'transparent');
+    grad.addColorStop(0.5,'#3fb95015');
+    grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad;
+    ctx.fillRect(pad.left,y0-10,cw,20);
+
+    // Mean reversion level
+    ctx.strokeStyle='#f0883e44';ctx.lineWidth=2;ctx.setLineDash([8,6]);
+    ctx.beginPath();ctx.moveTo(pad.left,yScale(p.b));ctx.lineTo(W-pad.right,yScale(p.b));ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f0883e77';ctx.font='bold 11px system-ui';ctx.textAlign='right';
+    ctx.fillText('b = '+(p.b*100).toFixed(1)+'%',W-pad.right-4,yScale(p.b)-6);
+
+    // Expected path
+    ctx.strokeStyle='#f0883e55';ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let j=0;j<=steps;j++){
+      j===0?ctx.moveTo(xScale(j),yScale(expPath[j])):ctx.lineTo(xScale(j),yScale(expPath[j]));
+    }
+    ctx.stroke();
+
+    // Paths
+    const colors=['#58a6ff','#7ee787','#d2a8ff','#ff7b72','#79c0ff','#a5d6ff','#ffa657','#f778ba',
+                   '#b392f0','#56d364','#e3b341','#6cb6ff','#dbab79','#7ce38b','#a371f7','#f2cc60'];
+    paths.forEach((path,idx)=>{
+      ctx.strokeStyle=colors[idx%colors.length]+'88';
+      ctx.lineWidth=1.2;
+      ctx.beginPath();
+      for(let j=0;j<=steps;j++){
+        j===0?ctx.moveTo(xScale(j),yScale(path[j])):ctx.lineTo(xScale(j),yScale(path[j]));
+      }
+      ctx.stroke();
+    });
+
+    // Analytics
+    const eRT=p.b+(p.r0-p.b)*Math.exp(-p.a*p.T);
+    const vrT=(p.r0*p.sigma*p.sigma*Math.exp(-p.a*p.T)*(1-Math.exp(-p.a*p.T)))/p.a +
+              (p.b*p.sigma*p.sigma*(1-Math.exp(-p.a*p.T))*(1-Math.exp(-p.a*p.T)))/(2*p.a);
+    const sdRT=Math.sqrt(Math.max(vrT,0));
+    const hl=Math.log(2)/p.a;
+    const lrVar=p.b*p.sigma*p.sigma/(2*p.a);
+    const lrStd=Math.sqrt(lrVar);
+
+    el('expRate').textContent=(eRT*100).toFixed(2)+'%';
+    el('stdRate').textContent=(sdRT*100).toFixed(2)+'%';
+    el('minVal').textContent=(globalMin*100).toFixed(3)+'%';
+    el('maxVal').textContent=(globalMax*100).toFixed(2)+'%';
+    el('halfLife').textContent=hl.toFixed(2)+'y';
+    el('lrStd').textContent=(lrStd*100).toFixed(2)+'%';
+
+    drawVolChart(p);
+    drawComparison(p);
+  }
+
+  function drawVolChart(p){
+    const canvas=el('volCanvas');
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+    canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width,H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:30,right:20,bottom:30,left:60};
+    const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
+
+    const rMax=0.15;
+    const volMax=p.sigma*Math.sqrt(rMax)*1.1;
+
+    // Grid
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const v=volMax*i/4;
+      const y=pad.top+(1-i/4)*ch;
+      ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='10px system-ui';ctx.textAlign='right';
+      ctx.fillText((v*100).toFixed(1)+'%',pad.left-6,y+3);
+    }
+    for(let r=0;r<=0.15;r+=0.03){
+      const x=pad.left+(r/rMax)*cw;
+      ctx.fillStyle='#484f58';ctx.font='10px system-ui';ctx.textAlign='center';
+      ctx.fillText((r*100).toFixed(0)+'%',x,H-pad.bottom+14);
+    }
+
+    // sigma*sqrt(r) curve
+    ctx.strokeStyle='#f0883e';ctx.lineWidth=2.5;
+    ctx.beginPath();
+    for(let r=0;r<=rMax;r+=0.001){
+      const vol=p.sigma*Math.sqrt(r);
+      const x=pad.left+(r/rMax)*cw;
+      const y=pad.top+(1-vol/volMax)*ch;
+      r===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    // Fill under
+    const lastX=pad.left+cw;
+    const lastY=pad.top+(1-p.sigma*Math.sqrt(rMax)/volMax)*ch;
+    ctx.lineTo(lastX,pad.top+ch);ctx.lineTo(pad.left,pad.top+ch);ctx.closePath();
+    ctx.fillStyle='#f0883e12';ctx.fill();
+
+    // Current rate marker
+    const cx=pad.left+(p.r0/rMax)*cw;
+    const cv=p.sigma*Math.sqrt(p.r0);
+    const cy=pad.top+(1-cv/volMax)*ch;
+    ctx.fillStyle='#f0883e';
+    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f0883e';ctx.font='bold 11px system-ui';ctx.textAlign='left';
+    ctx.fillText('r\u2080: '+(cv*100).toFixed(2)+'% eff. vol',cx+10,cy-4);
+
+    // Vasicek constant vol line for comparison
+    const vasConst=p.sigma*Math.sqrt(p.r0); // use same total vol at r0
+    ctx.strokeStyle='#8b949e44';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    const yConst=pad.top+(1-vasConst/volMax)*ch;
+    ctx.beginPath();ctx.moveTo(pad.left,yConst);ctx.lineTo(W-pad.right,yConst);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#8b949e66';ctx.font='10px system-ui';ctx.textAlign='right';
+    ctx.fillText('Vasicek: constant vol',W-pad.right-4,yConst-4);
+
+    // Labels
+    ctx.fillStyle='#8b949e';ctx.font='11px system-ui';ctx.textAlign='center';
+    ctx.fillText('Rate Level (r)',pad.left+cw/2,H-4);
+  }
+
+  function drawComparison(p){
+    const canvas=el('compareCanvas');
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+    canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+    const W=rect.width,H=rect.height;
+    ctx.clearRect(0,0,W,H);
+
+    const pad={top:20,right:12,bottom:28,left:44};
+    const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
+
+    // Simulate both
+    const cirResult=simulateCIR(p);
+    const vasResult=simulateVasicek(p);
+    const steps=500;
+
+    let yMin=Infinity,yMax=-Infinity;
+    cirResult.paths.slice(0,5).forEach(path=>path.forEach(v=>{yMin=Math.min(yMin,v);yMax=Math.max(yMax,v)}));
+    vasResult.paths.forEach(path=>path.forEach(v=>{yMin=Math.min(yMin,v);yMax=Math.max(yMax,v)}));
+    const yP=(yMax-yMin)*0.1||0.01;
+    yMin-=yP;yMax+=yP;
+
+    const xScale=i=>pad.left+(i/steps)*cw;
+    const yScale=v=>pad.top+(1-(v-yMin)/(yMax-yMin))*ch;
+
+    // Grid
+    ctx.strokeStyle='#21262d';ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const v=yMin+(yMax-yMin)*i/4;
+      const y=yScale(v);
+      ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();
+      ctx.fillStyle='#484f58';ctx.font='9px system-ui';ctx.textAlign='right';
+      ctx.fillText((v*100).toFixed(1)+'%',pad.left-4,y+3);
+    }
+
+    // Zero line
+    if(yMin<0){
+      const y0=yScale(0);
+      ctx.strokeStyle='#f8514944';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(pad.left,y0);ctx.lineTo(W-pad.right,y0);ctx.stroke();
+      ctx.fillStyle='#f8514915';
+      ctx.fillRect(pad.left,y0,cw,yScale(yMin)-y0);
+    }
+
+    // Vasicek paths (gray/red)
+    vasResult.paths.forEach(path=>{
+      ctx.strokeStyle='#8b949e55';ctx.lineWidth=1;
+      ctx.beginPath();
+      for(let j=0;j<=steps;j++){
+        if(j>0&&(path[j]<0||path[j-1]<0)){
+          ctx.stroke();
+          ctx.strokeStyle='#f8514999';ctx.lineWidth=1.5;
+          ctx.beginPath();
+          ctx.moveTo(xScale(j-1),yScale(path[j-1]));
+          ctx.lineTo(xScale(j),yScale(path[j]));
+          ctx.stroke();
+          ctx.strokeStyle='#8b949e55';ctx.lineWidth=1;
+          ctx.beginPath();ctx.moveTo(xScale(j),yScale(path[j]));
+        } else {
+          j===0?ctx.moveTo(xScale(j),yScale(path[j])):ctx.lineTo(xScale(j),yScale(path[j]));
+        }
+      }
+      ctx.stroke();
+    });
+
+    // CIR paths (orange)
+    cirResult.paths.slice(0,5).forEach(path=>{
+      ctx.strokeStyle='#f0883eaa';ctx.lineWidth=1.3;
+      ctx.beginPath();
+      for(let j=0;j<=steps;j++){
+        j===0?ctx.moveTo(xScale(j),yScale(path[j])):ctx.lineTo(xScale(j),yScale(path[j]));
+      }
+      ctx.stroke();
+    });
+
+    // Legend
+    ctx.fillStyle='#f0883e';ctx.font='bold 10px system-ui';ctx.textAlign='left';
+    ctx.fillText('CIR (positive)',pad.left+4,pad.top+12);
+    ctx.fillStyle='#8b949e';ctx.font='10px system-ui';
+    ctx.fillText('Vasicek (can go negative)',pad.left+4,pad.top+24);
+  }
+
+  // Event listeners
+  ['s-a','s-b','s-s','s-r0','s-T','s-np'].forEach(id=>{
+    el(id).addEventListener('input',()=>{
+      el('v-a').textContent=(+el('s-a').value).toFixed(2);
+      el('v-b').textContent=(+el('s-b').value).toFixed(2)+'%';
+      el('v-s').textContent=(+el('s-s').value).toFixed(2)+'%';
+      el('v-r0').textContent=(+el('s-r0').value).toFixed(2)+'%';
+      el('v-T').textContent=el('s-T').value;
+      el('v-np').textContent=el('s-np').value;
+      drawPaths();
+    });
+  });
+
+  el('btn-resim').addEventListener('click',drawPaths);
+  el('btn-seed').addEventListener('click',()=>{seed=Math.floor(Math.random()*100000);drawPaths();});
+  window.addEventListener('resize',drawPaths);
+  drawPaths();
+})();
+</script>
+</body>
+</html>

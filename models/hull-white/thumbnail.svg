@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#161b22"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+    <linearGradient id="curveGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f0883e" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#f0883e" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="200" fill="url(#bg)" rx="8"/>
+
+  <!-- Grid lines -->
+  <line x1="40" y1="30" x2="40" y2="170" stroke="#21262d" stroke-width="1"/>
+  <line x1="40" y1="170" x2="300" y2="170" stroke="#21262d" stroke-width="1"/>
+  <line x1="40" y1="100" x2="300" y2="100" stroke="#21262d" stroke-width="0.5" stroke-dasharray="2,4"/>
+  <line x1="40" y1="60" x2="300" y2="60" stroke="#21262d" stroke-width="0.5" stroke-dasharray="2,4"/>
+  <line x1="40" y1="140" x2="300" y2="140" stroke="#21262d" stroke-width="0.5" stroke-dasharray="2,4"/>
+
+  <!-- Target yield curve (thick white) -->
+  <polyline fill="none" stroke="#e6edf3" stroke-width="2.5" opacity="0.9"
+    points="40,130 70,118 100,105 130,95 160,88 190,82 220,78 250,75 280,73 300,72"/>
+
+  <!-- Fill under target curve -->
+  <polygon fill="url(#curveGrad)"
+    points="40,130 70,118 100,105 130,95 160,88 190,82 220,78 250,75 280,73 300,72 300,170 40,170"/>
+
+  <!-- Rate paths fitted to the curve (various colors) -->
+  <polyline fill="none" stroke="#58a6ff" stroke-width="1" opacity="0.6"
+    points="40,130 55,128 70,120 85,112 100,108 115,100 130,95 145,92 160,88 175,85 190,80 205,78 220,82 235,78 250,75 265,72 280,70 295,72"/>
+
+  <polyline fill="none" stroke="#7ee787" stroke-width="1" opacity="0.6"
+    points="40,130 55,132 70,125 85,118 100,112 115,105 130,98 145,95 160,90 175,92 190,88 205,82 220,80 235,76 250,78 265,80 280,76 295,74"/>
+
+  <polyline fill="none" stroke="#d2a8ff" stroke-width="1" opacity="0.6"
+    points="40,130 55,125 70,115 85,108 100,100 115,96 130,92 145,88 160,82 175,78 190,75 205,72 220,68 235,70 250,72 265,70 280,68 295,70"/>
+
+  <polyline fill="none" stroke="#ffa657" stroke-width="1" opacity="0.6"
+    points="40,130 55,135 70,130 85,122 100,115 115,108 130,100 145,95 160,98 175,95 190,90 205,88 220,85 235,82 250,80 265,78 280,80 295,78"/>
+
+  <polyline fill="none" stroke="#f778ba" stroke-width="1" opacity="0.6"
+    points="40,130 55,126 70,118 85,115 100,110 115,102 130,96 145,100 160,95 175,90 190,85 205,82 220,78 235,75 250,72 265,75 280,78 295,75"/>
+
+  <!-- Theta(t) curve (purple dashed - the time-varying drift) -->
+  <polyline fill="none" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7"
+    points="40,128 70,116 100,104 130,94 160,86 190,80 220,76 250,74 280,72 300,71"/>
+
+  <!-- Calibration checkmark -->
+  <circle cx="280" cy="42" r="10" fill="#a371f722" stroke="#a371f7" stroke-width="1"/>
+  <polyline fill="none" stroke="#a371f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+    points="275,42 278,45 285,38"/>
+  <text x="265" y="58" fill="#a371f7" font-size="8" font-family="system-ui" text-anchor="middle" opacity="0.8">calibrated</text>
+
+  <!-- Title -->
+  <text x="160" y="18" fill="#e6edf3" font-size="11" font-family="system-ui" font-weight="600" text-anchor="middle">Hull-White Model</text>
+
+  <!-- Formula with theta highlighted -->
+  <text x="160" y="195" fill="#8b949e" font-size="9" font-family="system-ui" text-anchor="middle">dr = [θ(t) - ar]dt + σdW</text>
+</svg>
